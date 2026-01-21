@@ -5,11 +5,11 @@
 | Component | Model | Purpose |
 |-----------|-------|---------|
 | Single Board Computer | Raspberry Pi 5 (8GB) | Main controller |
-| Temperature/Humidity Sensor | AM2320 | Environmental monitoring |
-| Relay Module | 2-channel 5V | Light & pump control |
+| Environmental Sensor | BME680 | Temperature, humidity, pressure, air quality |
+| Relay Module | 4-Channel SSR (Solid State) | Light, pump & future expansion |
+| Camera | IR Night Vision Camera | 24/7 visual monitoring (day/night) |
 | Grow Light | 12V LED panel | Plant lighting |
 | Water Pump | 12V submersible | Automated watering |
-| Webcam | Logitech C920 | Visual monitoring |
 | Power Supply | 12V 5A | Lights & pump |
 
 ---
@@ -17,32 +17,33 @@
 ## Wiring Diagram
 
 ```
-                    Raspberry Pi 4
+                    Raspberry Pi 5
                    ┌──────────────┐
                    │              │
-    AM2320         │   GPIO 2 ────┼──── SDA
+    BME680         │   GPIO 2 ────┼──── SDA
     Sensor         │   GPIO 3 ────┼──── SCL
                    │   3.3V   ────┼──── VCC
                    │   GND    ────┼──── GND
                    │              │
-    Relay          │   GPIO 23 ───┼──── IN1 (Light)
-    Module         │   GPIO 25 ───┼──── IN2 (Water)
+    4-Ch SSR       │   GPIO 23 ───┼──── CH1 (Light)
+    Relay          │   GPIO 25 ───┼──── CH2 (Water)
+                   │   GPIO 24 ───┼──── CH3 (Reserved)
+                   │   GPIO 26 ───┼──── CH4 (Reserved)
                    │   5V     ────┼──── VCC
                    │   GND    ────┼──── GND
                    │              │
-                   │   USB    ────┼──── Webcam
+                   │   CSI    ────┼──── IR Night Cam (ribbon cable)
                    │              │
                    └──────────────┘
 
 
-    Relay Module                    12V Devices
+    SSR Relay Module                12V Devices
    ┌────────────┐                  ┌────────────┐
    │            │                  │            │
-   │  COM1  ────┼──────────────────┼──── +12V   │
-   │  NO1   ────┼──── Grow Light ──┼──── Light  │
-   │            │                  │            │
-   │  COM2  ────┼──────────────────┼──── +12V   │
-   │  NO2   ────┼──── Water Pump ──┼──── Pump   │
+   │  CH1   ────┼──── Grow Light ──┼──── Light  │
+   │  CH2   ────┼──── Water Pump ──┼──── Pump   │
+   │  CH3   ────┼──── (Reserved) ──┼──── Fan    │
+   │  CH4   ────┼──── (Reserved) ──┼──── Heater │
    │            │                  │            │
    └────────────┘                  └────────────┘
 ```
@@ -55,14 +56,22 @@
 |------|----------|--------------|
 | GPIO 2 | I2C SDA | - |
 | GPIO 3 | I2C SCL | - |
-| GPIO 23 | Light Relay | LOW (active-low relay) |
-| GPIO 25 | Water Relay | LOW (active-low relay) |
+| GPIO 23 | Light Relay (SSR CH1) | HIGH |
+| GPIO 24 | Reserved (SSR CH3) | HIGH |
+| GPIO 25 | Water Relay (SSR CH2) | HIGH |
+| GPIO 26 | Reserved (SSR CH4) | HIGH |
 
 ---
 
-## AM2320 Sensor
+## BME680 Environmental Sensor
 
-The AM2320 uses I2C communication protocol.
+The BME680 is a multi-function sensor providing:
+- **Temperature** (°C)
+- **Humidity** (%)
+- **Barometric Pressure** (hPa)
+- **Air Quality / Gas Resistance** (Ohms)
+
+Uses I2C communication via Adafruit CircuitPython library.
 
 **Enable I2C on Pi:**
 ```bash
@@ -73,25 +82,27 @@ sudo raspi-config
 **Verify connection:**
 ```bash
 sudo i2cdetect -y 1
-# Should show address 0x5c
+# Should show address 0x77 (or 0x76)
 ```
 
 ---
 
-## Relay Control
+## SSR Relay Control
+
+Solid State Relays (SSR) provide silent, reliable switching with no mechanical wear.
 
 Using `pinctrl` for GPIO control (modern Pi OS):
 
-**Turn relay ON (active-low):**
+**Turn relay ON (active HIGH for SSR):**
 ```bash
-pinctrl set 23 op dl  # Light ON
-pinctrl set 25 op dl  # Water ON
+pinctrl set 23 op dh  # Light ON
+pinctrl set 25 op dh  # Water ON
 ```
 
 **Turn relay OFF:**
 ```bash
-pinctrl set 23 op dh  # Light OFF
-pinctrl set 25 op dh  # Water OFF
+pinctrl set 23 op dl  # Light OFF
+pinctrl set 25 op dl  # Water OFF
 ```
 
 ---
@@ -114,21 +125,30 @@ def water_plant():
 
 ---
 
-## Camera Setup
+## IR Night Vision Camera Setup
 
-**Check webcam:**
+The IR camera connects via CSI ribbon cable and provides 24/7 monitoring capability (visible light during day, infrared at night).
+
+**Check camera:**
 ```bash
-v4l2-ctl --list-devices
+libcamera-hello --list-cameras
 ```
 
 **Test capture:**
 ```bash
-ffmpeg -f v4l2 -i /dev/video0 -frames:v 1 test.jpg
+libcamera-still -o test.jpg
+```
+
+**Using picamera2 in Python:**
+```python
+from picamera2 import Picamera2
+picam2 = Picamera2()
+picam2.start()
+frame = picam2.capture_array()
 ```
 
 **Rotate 180 degrees (if mounted upside-down):**
 ```python
-# In capture script
 frame = cv2.rotate(frame, cv2.ROTATE_180)
 ```
 
@@ -219,20 +239,21 @@ ls /dev/i2c*
 sudo i2cdetect -y 1
 ```
 
-### Relay not switching
+### SSR Relay not switching
 ```bash
-# Test GPIO directly
-pinctrl set 23 op dl  # Should click
-pinctrl set 23 op dh  # Should click again
+# Test GPIO directly (SSR is silent, use multimeter or check device)
+pinctrl set 23 op dh  # Should turn ON
+pinctrl set 23 op dl  # Should turn OFF
 ```
 
 ### Camera not found
 ```bash
-# List video devices
-ls /dev/video*
+# List CSI cameras
+libcamera-hello --list-cameras
 
-# Check permissions
-sudo usermod -a -G video $USER
+# Check if camera module is enabled
+sudo raspi-config
+# Interface Options -> Camera -> Enable
 ```
 
 ### Network issues
