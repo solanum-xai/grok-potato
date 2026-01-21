@@ -2,7 +2,7 @@
 
 **AI-Powered Autonomous Potato Growing System for Mars Colonization Simulation**
 
-An experiment combining xAI's Grok Vision with real hardware to grow potatoes autonomously - as if preparing for Mars cultivation. The AI analyzes plant health 24/7 via webcam and controls watering/lighting based on visual analysis.
+An experiment combining xAI's Grok Vision with real hardware to grow potatoes autonomously - as if preparing for Mars cultivation. The AI analyzes plant health 24/7 via IR night vision camera and controls watering/lighting based on visual analysis.
 
 > *"Potatoes on Mars aren't just science fiction anymore"*
 
@@ -36,18 +36,18 @@ An experiment combining xAI's Grok Vision with real hardware to grow potatoes au
                              │ HTTP (Cloudflare Tunnel)
                              ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                       RASPBERRY PI (Python + Flask)                      │
+│                       RASPBERRY PI 5 (Python + Flask)                    │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                   │
-│  │   AM2320     │  │  GPIO Relay  │  │  GPIO Relay  │                   │
-│  │   Sensor     │  │  (Light)     │  │  (Water)     │                   │
-│  │  Temp/Humid  │  │  GPIO 23     │  │  GPIO 25     │                   │
+│  │   BME680     │  │  4-Ch SSR    │  │  IR Night    │                   │
+│  │   Sensor     │  │  Relay       │  │  Camera      │                   │
+│  │ T/H/P/Gas    │  │  Light/Water │  │  (CSI)       │                   │
 │  └──────────────┘  └──────────────┘  └──────────────┘                   │
 └─────────────────────────────────────────────────────────────────────────┘
                              │
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                     CAPTURE SERVICE (Python + FFmpeg)                    │
 │  ┌──────────────┐  ┌──────────────┐                                     │
-│  │   Webcam     │  │  RTMP Stream │                                     │
+│  │  picamera2   │  │  RTMP Stream │                                     │
 │  │   Capture    │──│  (Cloudflare)│                                     │
 │  └──────────────┘  └──────────────┘                                     │
 └─────────────────────────────────────────────────────────────────────────┘
