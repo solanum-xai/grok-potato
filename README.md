@@ -63,7 +63,7 @@ An experiment combining xAI's Grok Vision with real hardware to grow potatoes au
 | **Backend** | Node.js + Fastify (TypeScript) |
 | **Database** | PostgreSQL 16 + Drizzle ORM |
 | **AI** | Grok Vision (xAI API) |
-| **Hardware** | Raspberry Pi + AM2320 + Relay Module |
+| **Hardware** | Raspberry Pi 5 + BME680 + 4-Ch SSR + IR Camera |
 | **Streaming** | FFmpeg + Cloudflare Stream |
 | **Deployment** | Railway + Cloudflare Tunnel |
 
@@ -73,7 +73,7 @@ An experiment combining xAI's Grok Vision with real hardware to grow potatoes au
 
 ```sql
 -- Sensor readings (every 1 minute)
-sensor_readings (id, temperature, humidity, created_at)
+sensor_readings (id, temperature, humidity, pressure, air_quality, created_at)
 
 -- Grok analysis results
 grok_analyses (id, health_score, observations, issues,
@@ -216,16 +216,18 @@ CLOUDFLARE_STREAM_KEY= # RTMP key
 ## Hardware Setup
 
 ```
-Raspberry Pi 4
-├── AM2320 Sensor (I2C)
+Raspberry Pi 5
+├── BME680 Sensor (I2C)
 │   ├── VCC → 3.3V
 │   ├── GND → GND
 │   ├── SDA → GPIO 2
 │   └── SCL → GPIO 3
-├── Relay Module
-│   ├── Light Relay → GPIO 23
-│   └── Water Relay → GPIO 25
-└── USB Webcam (1080p)
+├── 4-Channel SSR Relay
+│   ├── CH1 (Light) → GPIO 23
+│   ├── CH2 (Water) → GPIO 25
+│   ├── CH3 (Reserved) → GPIO 24
+│   └── CH4 (Reserved) → GPIO 26
+└── IR Night Vision Camera (CSI)
 ```
 
 ---

@@ -12,12 +12,16 @@ export interface SensorReading {
   id: number;
   temperature: number;
   humidity: number;
+  pressure: number;
+  airQuality: number;
   createdAt: Date;
 }
 
 export interface SensorData {
-  temperature: number;
-  humidity: number;
+  temperature: number;   // Celsius
+  humidity: number;      // Percentage
+  pressure: number;      // hPa
+  airQuality: number;    // Gas resistance (Ohms)
   timestamp: string;
   error: string | null;
 }
